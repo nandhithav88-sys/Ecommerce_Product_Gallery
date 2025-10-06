@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Shema — Products</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+  <!-- ===== HEADER ===== -->
+  <header class="site-header glassy">
+    <div class="brand">
+      <span class="logo">🛍️</span>
+      <span class="name">Shema</span>
+    </div>
+    <div class="controls">
+      <input id="search" class="search-box" placeholder="Search products..." />
+      <select id="category" class="select-filter"></select>
+      <select id="sort" class="select-filter">
+        <option value="default">Sort</option>
+        <option value="low-high">Price: Low → High</option>
+        <option value="high-low">Price: High → Low</option>
+      </select>
+      <button id="themeToggle" class="icon-btn" title="Toggle theme">🌙</button>
+      <a class="cart-link btn-cart" href="cart.html">
+        🛒 Cart (<span id="cartCount">0</span>)
+      </a>
+    </div>
+  </header>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="container">
+    <section id="grid" class="product-grid"></section>
+  </main>
+
+  <!-- ===== PRODUCT MODAL ===== -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content elevated">
+      <button class="close">✕</button>
+      <div class="modal-image-wrap">
+        <img id="modalImg" src="" alt="" />
+      </div>
+      <div class="modal-info">
+        <h2 id="modalName" class="modal-title"></h2>
+        <p id="modalCategory" class="modal-category"></p>
+        <p id="modalDesc" class="modal-desc"></p>
+        <p class="price" id="modalPrice"></p>
+        <div class="modal-actions">
+          <input id="modalQty" type="number" min="1" value="1" class="qty-input" />
+          <button id="modalAdd" class="btn btn-primary">Add to Cart</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script src="app.js"></script>
+  <script>
+    // main script for index.html
+    (async function(){
+      const grid = document.getElementById('grid');
+      const search = document.getElementById('search');
+      const category = document.getElementById('category');
+      const sort = document.getElementById('sort');
+
+      let products = [];
+      try {
+        const res = await fetch('products.json');
+        products = await res.json();
+      } catch(e) {
+        products = window.__fallbackProducts || [];
+      }
+
+      const categories = ['all', ...new Set(products.map(p=>p.category))];
+      category.innerHTML = categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+      function render(list){
+        grid.innerHTML = list.map(p=>`
+          <article class="card smooth-hover">
+            <img src="${p.image}" alt="${p.name}" data-id="${p.id}" class="card-img" />
+            <div class="card-body">
+              <h3>${p.name}</h3>
+              <p class="muted">${p.category}</p>
+              <p class="price">₹${p.price}</p>
+              <div class="card-actions">
+                <button data-id="${p.id}" class="btn btn-primary add">Add</button>
+                <button data-id="${p.id}" class="btn btn-light preview">Preview</button>
+              </div>
+            </div>
+          </article>
+        `).join('');
+      }
+
+      function applyFilters(){
+        let out = [...products];
+        const q = search.value.trim().toLowerCase();
+        const cat = category.value;
+        const s = sort.value;
+        if(cat !== 'all') out = out.filter(p=>p.category === cat);
+        if(q) out = out.filter(p=>p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+        if(s === 'low-high') out.sort((a,b)=>a.price-b.price);
+        if(s === 'high-low') out.sort((a,b)=>b.price-a.price);
+        render(out);
+      }
+
+      search.addEventListener('input', debounce(applyFilters, 250));
+      category.addEventListener('change', applyFilters);
+      sort.addEventListener('change', applyFilters);
+
+      grid.addEventListener('click', (e)=>{
+        const id = e.target.dataset.id && Number(e.target.dataset.id);
+        if(!id) return;
+        const product = products.find(p=>p.id===id);
+        if(e.target.classList.contains('add')){
+          addToCart(product, 1);
+          showToast(`${product.name} added to cart`);
+          updateCartCount();
+        } else if(e.target.classList.contains('preview') || e.target.classList.contains('card-img')){
+          openModal(product);
+        }
+      });
+
+      render(products);
+      updateCartCount();
+
+      // modal logic
+      const modal = document.getElementById('modal');
+      const modalImg = document.getElementById('modalImg');
+      const modalName = document.getElementById('modalName');
+      const modalDesc = document.getElementById('modalDesc');
+      const modalCategory = document.getElementById('modalCategory');
+      const modalPrice = document.getElementById('modalPrice');
+      const modalQty = document.getElementById('modalQty');
+      const modalAdd = document.getElementById('modalAdd');
+
+      function openModal(p){
+        modalImg.src = p.image;
+        modalName.textContent = p.name;
+        modalDesc.textContent = p.description || '';
+        modalCategory.textContent = p.category;
+        modalPrice.textContent = `₹${p.price}`;
+        modalQty.value = 1;
+        modal.classList.remove('hidden');
+
+        modalAdd.onclick = ()=>{
+          addToCart(p, Number(modalQty.value) || 1);
+          updateCartCount();
+          showToast(`${p.name} added to cart`);
+          modal.classList.add('hidden');
+        };
+      }
+
+      document.querySelector('#modal .close').addEventListener('click', ()=> modal.classList.add('hidden'));
+    })();
+  </script>
+
+  <script>
+    // fallback products if fetch blocked
+    window.__fallbackProducts = [
+      {id:1,name:'Wireless Headphones',category:'Electronics',price:1999,image:'https://m.media-amazon.com/images/I/41fbL9dI5EL._SY300_SX300_QL70_FMwebp_.jpg',description:'Comfortable wireless headphones.'},
+      {id:2,name:'Smart Watch',category:'Electronics',price:2999,image:'https://m.media-amazon.com/images/I/41E5lJiUN3L._SY300_SX300_QL70_FMwebp_.jpg',description:'Track activity & notifications.'},
+      {id:3,name:'Leather Wallet',category:'Accessories',price:799,image:'https://imagescdn.peterengland.com/img/app/product/3/39708534-14583048.jpg?auto=format&w=390',description:'Premium leather wallet.'},
+      {id:4,name:'Running Shoes',category:'Footwear',price:2599,image:"https://images.puma.com/image/upload/f_auto,q_auto,b_rgb:fafafa,w_750,h_750/global/310160/23/sv01/fnd/IND/fmt/png/SOFTRIDE-Mayve-Women's-Running-Shoes",description:'Lightweight running shoes.'},
+      {id:5,name:'Sunglasses',category:'Accessories',price:999,image:'https://m.media-amazon.com/images/I/71QtoTstbpL._UY1100_.jpg',description:'UV protection sunglasses.'},
+      {id:6,name:'Bluetooth Speaker',category:'Electronics',price:1499,image:'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSPzO2aUkPx4r1SIu1Q6_GPnQu-XQG-1F8Pow&s',description:'Portable speaker.'},
+      {id:7,name:'Formal Shoes',category:'Footwear',price:3199,image:'https://m.media-amazon.com/images/I/81Z-yplrOoL._SY695_.jpg',description:'Polished formal shoes.'},
+      {id:8,name:'Denim Jacket',category:'Clothing',price:1899,image:'https://m.media-amazon.com/images/I/71CRiLBCNxL._SY879_.jpg',description:'Stylish denim jacket.'},
+      {id:9,name:'Backpack',category:'Accessories',price:1299,image:'https://m.media-amazon.com/images/I/61XuRFe9HJL._SX679_.jpg',description:'Everyday backpack.'}
+    ];
+  </script>
+</body>
+</html>

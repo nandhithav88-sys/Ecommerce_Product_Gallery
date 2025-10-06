@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Checkout — My Store</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">🛒 My Store</div>
+    <div class="controls">
+      <a href="cart.html" class="btn btn-light">Back to Cart</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="checkout-container">
+      <div class="checkout-form">
+        <h2>Billing Details</h2>
+        <form id="checkoutForm">
+          <label>Name
+            <input name="name" placeholder="John Doe" required>
+          </label>
+          <label>Address
+            <textarea name="address" placeholder="123 Main St" required></textarea>
+          </label>
+          <label>City
+            <input name="city" placeholder="City" required>
+          </label>
+          <label>Postal Code
+            <input name="postal" placeholder="123456" required>
+          </label>
+          <label>Payment (mock)
+            <input name="card" placeholder="Card number" required>
+          </label>
+          <button type="submit" class="btn btn-primary">Place Order</button>
+        </form>
+        <div id="confirmation" class="hidden"></div>
+      </div>
+
+      <div class="checkout-summary">
+        <h2>Order Summary</h2>
+        <div id="summaryList"></div>
+        <h3 id="summaryTotal"></h3>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (function(){
+      const form = document.getElementById('checkoutForm');
+      const conf = document.getElementById('confirmation');
+      const summaryList = document.getElementById('summaryList');
+      const summaryTotal = document.getElementById('summaryTotal');
+
+      function renderSummary(){
+        const cart = getCart();
+        if(cart.length === 0){
+          summaryList.innerHTML = '<p class="muted">Your cart is empty.</p>';
+          summaryTotal.textContent = '';
+          return;
+        }
+        let total = 0;
+        summaryList.innerHTML = cart.map(item => {
+          const subtotal = item.price * item.qty;
+          total += subtotal;
+          return `<p>${item.name} × ${item.qty} = ₹${subtotal}</p>`;
+        }).join('');
+        summaryTotal.textContent = `Total: ₹${total}`;
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const name = data.get('name');
+
+        const cart = getCart();
+        if(cart.length === 0){
+          showToast('Your cart is empty');
+          return;
+        }
+
+        const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+        const order = {
+          name,
+          total,
+          items: cart,
+          date: new Date().toISOString()
+        };
+
+        clearCart();
+        updateCartCount();
+
+        form.classList.add('hidden');
+        conf.classList.remove('hidden');
+        conf.innerHTML = `
+          <h3>Thank you, ${name}!</h3>
+          <p>Your order of ₹${total} has been placed successfully.</p>
+          <a href="index.html" class="btn btn-primary">Back to Shop</a>
+        `;
+        console.log('ORDER:', order);
+        showToast('Order placed successfully!');
+        renderSummary();
+      });
+
+      renderSummary();
+    })();
+  </script>
+</body>
+</html>

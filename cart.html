@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Store — Cart</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">🛒 My Store</div>
+    <div class="controls">
+      <a href="index.html" class="btn btn-light">Continue Shopping</a>
+      <a href="checkout.html" class="btn btn-primary">Checkout</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="cartArea" class="cart-container"></section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (function(){
+      const cartArea = document.getElementById('cartArea');
+
+      function renderCart(){
+        const cart = getCart();
+        if(cart.length === 0){
+          cartArea.innerHTML = '<p class="muted">Your cart is empty. <a href="index.html">Shop now</a>.</p>';
+          return;
+        }
+
+        let total = 0;
+        const rows = cart.map(item => {
+          const subtotal = item.price * item.qty;
+          total += subtotal;
+          return `
+            <div class="cart-row">
+              <div class="cart-item">
+                <img src="${item.image}" alt="${item.name}" />
+                <div class="cart-details">
+                  <h4>${item.name}</h4>
+                  <p class="muted">${item.category}</p>
+                  <p class="price">₹${item.price}</p>
+                </div>
+              </div>
+              <div class="cart-actions">
+                <div class="qty-controls">
+                  <button class="qty minus" data-id="${item.id}">−</button>
+                  <span>${item.qty}</span>
+                  <button class="qty plus" data-id="${item.id}">+</button>
+                </div>
+                <p class="subtotal">₹${subtotal}</p>
+                <button class="remove btn btn-light" data-id="${item.id}">Remove</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        cartArea.innerHTML = `
+          <div class="cart-list">${rows}</div>
+          <div class="cart-summary">
+            <h3>Total: ₹${total}</h3>
+            <div class="cart-actions">
+              <button id="clearCart" class="btn btn-danger">Clear Cart</button>
+              <a href="checkout.html" class="btn btn-primary">Proceed to Checkout</a>
+            </div>
+          </div>
+        `;
+
+        // Event listeners
+        document.querySelectorAll('.qty.plus').forEach(btn => {
+          btn.addEventListener('click', () => {
+            changeQty(Number(btn.dataset.id), 1);
+            renderCart();
+            updateCartCount();
+          });
+        });
+
+        document.querySelectorAll('.qty.minus').forEach(btn => {
+          btn.addEventListener('click', () => {
+            changeQty(Number(btn.dataset.id), -1);
+            renderCart();
+            updateCartCount();
+          });
+        });
+
+        document.querySelectorAll('.remove').forEach(btn => {
+          btn.addEventListener('click', () => {
+            removeFromCart(Number(btn.dataset.id));
+            renderCart();
+            updateCartCount();
+          });
+        });
+
+        document.getElementById('clearCart').addEventListener('click', () => {
+          clearCart();
+          renderCart();
+          updateCartCount();
+        });
+      }
+
+      renderCart();
+    })();
+  </script>
+</body>
+</html>
